@@ -1,6 +1,16 @@
 {
   "name": "gds1-vertretungsplan",
+  "version": "0.0.0",
   "author": "Max Klein <max@maxkl.de>",
   "license": "MIT",
-  "version": "0.0.0"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maxkl/gds1-vertretungsplan"
+  },
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "mkdirp": "^0.5.1",
+    "pdf2json": "^0.7.1",
+    "request": "^2.64.0"
+  }
 }
