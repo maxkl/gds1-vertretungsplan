@@ -271,11 +271,14 @@ function processPDFPage(pageNum, page) {
 
 	var filename = "database";
 
+	// TODO: multi-page
 	fs.writeFile(filename, plan.serialize(), function (err) {
 		if(err) {
 			console.error("Write error:", err);
 		} else {
 			console.log("Write successful!");
+
+			console.timeEnd("All");
 		}
 	});
 }
@@ -290,9 +293,13 @@ function processPDF(pdf) {
 	for(var i = 0; i < numPages; i++) {
 		processPDFPage(i, pages[i]);
 	}
+
+	console.timeEnd("Parse PDF");
 }
 
 function parsePDF(filename) {
+	console.time("Parse PDF");
+
 	var parser = new PDFParser();
 
 	parser.on("pdfParser_dataReady", function (data) {
@@ -308,6 +315,8 @@ function parsePDF(filename) {
 }
 
 function loadPDF(pdfURL) {
+	console.time("Download PDF");
+
 	var urlParts = url.parse(pdfURL);
 	var urlPath = urlParts.pathname;
 	var basename = path.basename(urlPath);
@@ -325,6 +334,9 @@ function loadPDF(pdfURL) {
 
 			stream.on("finish", function () {
 				console.log("Downloaded PDF");
+
+				console.timeEnd("Download PDF");
+				console.timeEnd("Download");
 
 				parsePDF(filename);
 			});
@@ -353,6 +365,8 @@ function getVertretungsplan(url) {
 			console.error("Page request error:", err);
 		} else {
 			if(res.statusCode === 200) {
+				console.timeEnd("Download website");
+
 				var $ = cheerio.load(body);
 
 				var link = $(".entry-content a");
@@ -371,5 +385,9 @@ function getVertretungsplan(url) {
 		}
 	});
 }
+
+console.time("All");
+console.time("Download");
+console.time("Download website");
 
 getVertretungsplan(config.url);
