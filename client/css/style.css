@@ -1,0 +1,29 @@
+
+* {
+	box-sizing: border-box;
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+
+	font: 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #444;
+	background-color: #fff;
+}
+
+body {
+	width: 70%;
+	margin: 0 auto;
+}
+
+.teaser {
+	padding: 10px;
+}
+
+@media (max-width: 768px) {
+	body {
+		width: 100%;
+		padding: 0 10px;
+	}
+}
