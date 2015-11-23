@@ -1,4 +1,8 @@
 
 # GDS1 Vertretungsplan
 
-TODO
+## Setup
+
+- server/dbConfig.json properties:
+  - url - MongoDB server url
+- ...

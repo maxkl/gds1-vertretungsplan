@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Vertretungsplan</title>
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+
+				font: 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
+				color: #444;
+				background-color: #fff;
+			}
+
+			.container {
+				width: 70%;
+				margin: 0 auto;
+			}
+
+			table {
+				width: 100%;
+
+				border-collapse: collapse;
+			}
+
+			table tr th,
+			table tr td {
+				padding: 5px 10px;
+
+				border: 1px solid #959595;
+			}
+
+			table tr td {
+				background-color: #fff;
+				text-align: left;
+			}
+
+			table tr:nth-child(odd) td {
+				background-color: #e9e9e9;
+			}
+
+			@media (max-width: 768px) {
+				.container {
+					width: 100%;
+					padding: 0 10px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Alle Vertretungen</h1>
+			<p>
+				<strong>Disclaimer:</strong>
+				Die Informationen auf dieser Seite sind nicht verlässlich.
+				Sie werden von <a href="http://tgsindelfingen.de/vertretungs-und-ausfallplaene/">hier</a> ausgelesen.
+				Da der Vertretungsplan dort nur sehr selten aktualisiert wird kann ich nicht für die Aktualität garantieren.
+				Außerdem können Informationen falsch ausgelesen werden und daher falsch sein.
+			</p>
+			<table>
+				<tr>
+					<th>Tag</th>
+					<th>Stunde(n)</th>
+					<th>Klassen</th>
+					<th>Lehrer / Fach</th>
+					<th>Vertretung</th>
+					<th>Fach</th>
+					<th>Raum</th>
+					<th>Bemerkung</th>
+				</tr>
+				<!--<% for(var i = 0; i < vertretungen.length; i++) {-->
+				<!--var v = vertretungen[i]; %>-->
+				<tr for="v in data.vertretungen">
+					<td>${v.day}</td>
+					<td>${v.lessons}</td>
+					<td>${v.classes}</td>
+					<td>${v.teacherSubject}</td>
+					<td>${v.substituteTeacher}</td>
+					<td>${v.substituteSubject}</td>
+					<td>${v.room}</td>
+					<td>${v.comment}</td>
+				</tr>
+				<!--<% } %>-->
+			</table>
+		</div>
+	</body>
+</html>
