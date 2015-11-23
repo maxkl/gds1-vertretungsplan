@@ -3,29 +3,49 @@
  * License: MIT
  */
 
+var childProcess = require("child_process"),
+	path = require("path");
+
 var express = require("express"),
-	moment = require("moment");
-	//CronJob = require("cron").CronJob;
-//var database = require("./lib/database");
-//	fetchPlan = require("./lib/fetch");
+	moment = require("moment"),
+	CronJob = require("cron").CronJob;
 
 var vpTemplate = require("./views/vp.marko");
 
-//new CronJob("0 */15 * * * *", function () {
-//	// TODO: fetch plan (lib/fetch.js), db connection from main server, collection 'vertretungen'
-//
-//	console.log("Fetching... (Not really)");
-//}, null, true, "Europe/Berlin");
+var fetchPath = path.join(__dirname, "lib/fetch.js");
 
-//database.connect();
+function startBackgroundJob() {
+	function runJob() {
+		var fetch = childProcess.fork(fetchPath);
 
-module.exports = function () {
+		fetch.on("close", function (code) {
+			if(code !== 0) {
+				console.error("Fetch error (" + code + ")");
+				return;
+			}
+
+			console.log("Fetch successful");
+		});
+	}
+
+	new CronJob("0 */15 * * * *", runJob, null, true, "Europe/Berlin");
+
+	runJob();
+}
+
+var backgroundJobStarted = false;
+
+module.exports = function (app) {
 	var router = new express.Router();
 
-	router.get("/", function (req, res, next) {
-		//db = database.db; // FIXME
-		var db = req.app.get("db");
+	var db = app.get("db");
 
+	if(!backgroundJobStarted) {
+		startBackgroundJob();
+		backgroundJobStarted = true;
+	}
+
+	router.get("/", function (req, res, next) {
 		var vertretungen = [];
 
 		var cursor = db.collection("vertretungen").find().sort([["date", 1], ["_id", 1]]);
@@ -45,16 +65,12 @@ module.exports = function () {
 			if(err) {
 				next(err);
 			} else {
-				console.log("DB query successful");
+				//console.log("DB query successful");
 			}
 
 			vpTemplate.render({
 				vertretungen: vertretungen
 			}, res);
-
-			//res.render("vp", {
-			//	vertretungen: vertretungen
-			//});
 		});
 	});
 
