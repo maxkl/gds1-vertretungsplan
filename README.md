@@ -1,8 +1,8 @@
 
 # GDS1 Vertretungsplan
 
-## Setup
+Live: https://maxkl.de/vp
 
-- server/dbConfig.json properties:
-  - url - MongoDB server url
-- ...
+## Dev
+
+API: https://maxkl.de/vp/api (Documented [here](https://github.com/maxkl/gds1-vertretungsplan/blob/master/API.md))

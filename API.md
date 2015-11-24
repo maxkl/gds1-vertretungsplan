@@ -11,11 +11,7 @@ All requests/responses are in JSON.
 
 #### Successful
 
-```json
-{
-  // Depends on endpoint
-}
-```
+Depends on endpoint
 
 #### Failed
 
