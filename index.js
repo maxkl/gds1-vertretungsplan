@@ -33,6 +33,38 @@ function startBackgroundJob() {
 	runJob();
 }
 
+/**
+ * Process a MongoDB document for a template
+ * @param doc
+ */
+function beautifyDBData(doc) {
+	return {
+		day: moment(doc.date).format("DD.MM."),
+		lessons: (doc.startLesson === doc.endLesson) ? doc.startLesson + "." : doc.startLesson + ". - " + doc.endLesson + ".",
+		classes: doc.classes.join(", "),
+		teacherSubject: doc.teacher + " / " + doc.subject,
+		substituteTeacher: doc.dropped ? "entfällt" : doc.substituteTeacher || "-",
+		substituteSubject: doc.substituteSubject || "-",
+		room: doc.room || "-",
+		comment: doc.text || "-"
+	};
+}
+
+/**
+ *
+ * @param {string} str
+ * @returns {moment}
+ */
+function parseDateParam(str) {
+	if(str === "latest") {
+		return null;
+	} else if(str === "today") {
+		return moment();
+	} else {
+		return moment(str, ["DD.MM.", "DD.MM.YYYY"], true);
+	}
+}
+
 var backgroundJobStarted = false;
 
 module.exports = function (app) {
@@ -45,33 +77,96 @@ module.exports = function (app) {
 		backgroundJobStarted = true;
 	}
 
+	/*
+	 * TODO:
+	 * - For multiple classes
+	 */
+
 	router.get("/", function (req, res, next) {
 		var vertretungen = [];
 
-		var cursor = db.collection("vertretungen").find().sort([["date", 1], ["_id", 1]]);
+		/*
+		 * GET params:
+		 * from  - Start date, defaults to 'today'
+		 * to    - End date, defaults to 'latest'
+		 * class - Class, defaults to null
+		 */
 
-		cursor.forEach(function (doc) {
-			vertretungen.push({
-				day: moment(doc.date).format("DD.MM."),
-				lessons: (doc.startLesson === doc.endLesson) ? doc.startLesson + "." : doc.startLesson + ". - " + doc.endLesson + ".",
-				classes: doc.classes.join(", "),
-				teacherSubject: doc.teacher + " / " + doc.subject,
-				substituteTeacher: doc.dropped ? "entfällt" : doc.substituteTeacher || "-",
-				substituteSubject: doc.substituteSubject || "-",
-				room: doc.room || "-",
-				comment: doc.text || "-"
-			});
-		}, function (err) {
-			if(err) {
-				next(err);
-			} else {
-				//console.log("DB query successful");
+		var fromParam = req.query.from || "today",
+			toParam = req.query.to || "latest",
+			classParam = req.query.class || null;
+
+		var from = parseDateParam(fromParam),
+			to = parseDateParam(toParam);
+
+		//console.log(fromParam, from ? from.format() : "null");
+		//console.log(toParam, to ? to.format() : "null");
+
+		if(from && from.isValid() && (!to || to.isValid())) {
+			var dbQuery = {
+				date: {
+					$gte: from.toDate()
+				}
+			};
+
+			if(to) {
+				to.endOf("day");
+				dbQuery.date.$lt = to.toDate();
 			}
 
+			if(classParam) {
+				dbQuery.classes = classParam;
+			}
+
+			//console.log(dbQuery);
+
+			var cursor = db.collection("vertretungen").find(dbQuery).sort([["date", 1], ["_id", 1]]);
+
+			cursor.forEach(function (doc) {
+				vertretungen.push(beautifyDBData(doc));
+			}, function (err) {
+				if(err) {
+					next(err);
+					return;
+				}
+
+				vpTemplate.render({
+					vertretungen: vertretungen,
+					message: vertretungen.length ? null : "Keine Einträge gefunden"
+				}, res);
+			});
+		} else {
 			vpTemplate.render({
-				vertretungen: vertretungen
+				vertretungen: [],
+				message: "Ungültiges Datum"
 			}, res);
-		});
+		}
+
+		//vertretungen.push({
+		//	day: req.query.from || "undefined",
+		//	lessons: "-",
+		//	classes: "-",
+		//	teacherSubject: "-",
+		//	substituteTeacher: "-",
+		//	substituteSubject: "-",
+		//	room: "-",
+		//	comment: "-"
+		//});
+		//
+		//vertretungen.push({
+		//	day: req.query.to || "undefined",
+		//	lessons: "-",
+		//	classes: "-",
+		//	teacherSubject: "-",
+		//	substituteTeacher: "-",
+		//	substituteSubject: "-",
+		//	room: "-",
+		//	comment: "-"
+		//});
+		//
+		//vpTemplate.render({
+		//	vertretungen: vertretungen
+		//}, res);
 	});
 
 	return router;
