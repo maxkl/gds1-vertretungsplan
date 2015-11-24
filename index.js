@@ -169,5 +169,7 @@ module.exports = function (app) {
 		//}, res);
 	});
 
+	router.use("/api", require("./api")(app));
+
 	return router;
 };
