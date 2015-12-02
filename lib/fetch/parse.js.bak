@@ -3,23 +3,9 @@
  * License: MIT
  */
 
-var url = require("url"),
-	path = require("path"),
-	fs = require("fs");
-var PDFParser = require("pdf2json"),
-	cheerio = require("cheerio"),
-	request = require("request"),
-	mkdirp = require("mkdirp"),
-	mongodb = require("mongodb"),
-	MongoClient = mongodb.MongoClient;
+var PDFParser = require("pdf2json");
 
 var ARROW_CHAR = "\u2192";
-
-var config = {
-	url: "http://tgsindelfingen.de/vertretungs-und-ausfallplaene/",
-	cacheDir: path.join(__dirname, "cache"),
-	dbUrl: "mongodb://localhost:27017/maxkl_de"
-};
 
 /**
  * Regular expressions for parsing
@@ -38,111 +24,6 @@ var
 
 	// After table
 	rTableEnd = /^.*G r u b e r  &  P e t t e r s   S o f t w a r e.*$/;
-
-function storeResult(plan, callback) {
-	var insertData = [];
-
-	//plan:
-	//{
-	//	schoolYear: null, // planDate
-	//	untisVersion: null, // don't care
-	//	date: null,
-	//	fromDate: null, // don't care
-	//	toDate: null, // don't care
-	//	entries: []
-	//};
-	//
-	//entry:
-	//{
-	//	date: null,
-	//	startLesson: null, TODO
-	//	endLesson: null, TODO
-	//	classes: null,
-	//	teacher: null,
-	//	substituteTeacher: null,
-	//	subject: null,
-	//	substituteSubject: null,
-	//	dropped: null,
-	//	room: null,
-	//	text: null
-	//};
-
-	var entries = plan.entries, entry;
-	for(var i = 0; i < entries.length; i++) {
-		entry = entries[i];
-
-		insertData.push({
-			planDate: plan.date,
-
-			date: entry.date,
-			startLesson: entry.startLesson,
-			endLesson: entry.endLesson,
-			classes: entry.classes,
-			teacher: entry.teacher,
-			substituteTeacher: entry.substituteTeacher,
-			subject: entry.subject,
-			substituteSubject: entry.substituteSubject,
-			dropped: entry.dropped,
-			room: entry.room,
-			text: entry.text
-		});
-	}
-
-	var db = null, vertretungen = null;
-
-	/**
-	 * Remove all entries with dates that we have new data for
-	 */
-	function removeOldEntries() {
-		// Remove entries whose date is covered by the new data
-		vertretungen.deleteMany({
-			date: {
-				$gte: plan.fromDate,
-				$lte: plan.toDate
-			}
-		}, function (err, result) {
-			if(err) {
-				//console.error("DB delete error:", err);
-				callback(new Error("DB delete error: " + err.message));
-				return;
-			}
-
-			//console.log("DB delete successful!", result.deletedCount);
-
-			insertNewEntries();
-		});
-	}
-
-	function insertNewEntries() {
-		vertretungen.insertMany(insertData, function (err, result) {
-			if(err) {
-				//console.error("DB insert error:", err);
-				callback(new Error("DB insert error: " + err.message));
-				return;
-			}
-
-			//console.log("DB insert successful!", result.insertedCount);
-
-			db.close();
-
-			callback(null);
-		});
-	}
-
-	MongoClient.connect(config.dbUrl, function (err, database) {
-		if(err) {
-			//console.error("DB connect error:", err);
-			callback(new Error("DB connect error: " + err.message));
-			return;
-		}
-
-		db = database;
-
-		vertretungen = db.collection("vertretungen");
-
-		removeOldEntries();
-	});
-}
 
 function shortDate(year, month, day, hour, minute, second, milliscond) {
 	return new Date(+year || 0, +month || 0, +day || 0, +hour || 0, +minute || 0, +second || 0, +milliscond || 0);
@@ -389,7 +270,8 @@ function processPDF(pdf, callback) {
 		}
 	}
 
-	storeResult(fullPlan, callback);
+	//storeResult(fullPlan, callback);
+	callback(null, fullPlan);
 }
 
 /**
@@ -417,96 +299,4 @@ function parsePDF(filename, callback) {
 	parser.loadPDF(filename);
 }
 
-/**
- *
- * @param pdfURL
- * @param callback
- */
-function loadPDF(pdfURL, callback) {
-	var urlParts = url.parse(pdfURL);
-	var urlPath = urlParts.pathname;
-	var basename = path.basename(urlPath);
-	var filename = path.join(config.cacheDir, basename);
-
-	//console.log("PDF file name:", filename);
-
-	mkdirp(config.cacheDir, function (err) {
-		if(err) {
-			//console.error("Could not create cache dir:", err);
-			callback(new Error("Could not create cache dir: " + err.message));
-			return;
-		}
-
-		//console.log("Created cache dir");
-
-		var stream = fs.createWriteStream(filename);
-
-		stream.on("finish", function () {
-			//console.log("Downloaded PDF");
-
-			parsePDF(filename, callback);
-		});
-
-		stream.on("error", function (err) {
-			//console.error("PDF file stream error:", err);
-			callback(new Error("PDF file stream error: " + err.message));
-		});
-
-		// TODO: cache (etag, modified)
-		request(pdfURL)
-			.on("error", function (err) {
-				//console.error("PDF download error:", err);
-				callback(new Error("PDF download error: " + err.message));
-			})
-			.pipe(stream);
-	});
-}
-
-/**
- *
- * @param url
- * @param callback
- */
-function getVertretungsplan(url, callback) {
-	//console.log("Loading ", url);
-
-	request({
-		url: url,
-		followRedirect: false
-	}, function (err, res, body) {
-		if(err) {
-			//console.error("Page request error:", err);
-			callback(new Error("Page request error: " + err.message));
-		} else {
-			if(res.statusCode === 200) {
-				var $ = cheerio.load(body);
-
-				var link = $(".entry-content a");
-				var href = link.attr("href");
-
-				if(href) {
-					//console.log("Found PDF:", href);
-
-					loadPDF(href, callback);
-				} else {
-					//console.error("PDF url is:", href);
-					callback(new Error("PDF url is: " + href));
-				}
-			} else {
-				//console.error("Unexpected status: " + res.statusCode);
-				callback(new Error("Unexpected status: " + res.statusCode));
-			}
-		}
-	});
-}
-
-getVertretungsplan(config.url, function (err, data) {
-	if(err) {
-		console.error("ERROR", err);
-		return;
-	}
-
-	//console.log("SUCCESS", data);
-
-	process.exit(err ? 1 : 0);
-});
+module.exports = parsePDF;

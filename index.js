@@ -5,14 +5,15 @@
 
 var childProcess = require("child_process"),
 	path = require("path");
-
 var express = require("express"),
 	moment = require("moment"),
 	CronJob = require("cron").CronJob;
+var PersistentStorage = require("./lib/persistentStorage");
 
 var vpTemplate = require("./views/vp.marko");
 
-var fetchPath = path.join(__dirname, "lib/fetch.js");
+var fetchPath = path.join(__dirname, "lib/fetch"),
+	persistentStoragePath = path.join(__dirname, "cache", "storage.json");
 
 function startBackgroundJob() {
 	function runJob() {
@@ -59,7 +60,7 @@ function parseDateParam(str) {
 	if(str === "latest") {
 		return null;
 	} else if(str === "today") {
-		return moment();
+		return moment().startOf("day");
 	} else {
 		return moment(str, ["DD.MM.", "DD.MM.YYYY"], true);
 	}
@@ -69,6 +70,8 @@ var backgroundJobStarted = false;
 
 module.exports = function (app) {
 	var router = new express.Router();
+
+	var storage = new PersistentStorage(persistentStoragePath);
 
 	var db = app.get("db");
 
@@ -102,6 +105,10 @@ module.exports = function (app) {
 		//console.log(fromParam, from ? from.format() : "null");
 		//console.log(toParam, to ? to.format() : "null");
 
+		var latestPlanDate = storage.has("latestPlanDate")
+				? moment(storage.get("latestPlanDate")).format("DD.MM.YYYY HH:mm")
+				: "-";
+
 		if(from && from.isValid() && (!to || to.isValid())) {
 			var dbQuery = {
 				date: {
@@ -131,12 +138,14 @@ module.exports = function (app) {
 				}
 
 				vpTemplate.render({
+					latestPlanDate: latestPlanDate,
 					vertretungen: vertretungen,
 					message: vertretungen.length ? null : "Keine Einträge gefunden"
 				}, res);
 			});
 		} else {
 			vpTemplate.render({
+				latestPlanDate: latestPlanDate,
 				vertretungen: [],
 				message: "Ungültiges Datum"
 			}, res);
@@ -169,7 +178,7 @@ module.exports = function (app) {
 		//}, res);
 	});
 
-	router.use("/api", require("./api")(app));
+	router.use("/api", require("./api")(app, storage));
 
 	return router;
 };

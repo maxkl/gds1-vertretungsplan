@@ -24,13 +24,15 @@ var express = require("express");
  * error: Error message
  */
 
-module.exports = function (app) {
+module.exports = function (app, storage) {
 	var router = new express.Router();
 
 	var db = app.get("db");
 
-	router.get("/plan", function (req, res) {
-
+	router.get("/info", function (req, res) {
+		res.json({
+			latestPlanDate: storage.get("latestPlanDate")
+		});
 	});
 
 	return router;
